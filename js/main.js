@@ -18,9 +18,14 @@ const menu = document.querySelector('.menu');
 const logo = document.querySelector('.logo');
 const cardsMenu = document.querySelector('.cards-menu');
 const menuWrapper = document.querySelector('.menu-wrapper');
+const modalBody = document.querySelector('.modal-body');
+const modalPricetag = document.querySelector('.modal-pricetag');
+const clearCart = document.querySelector('.clear-cart');
 
 
 let login = localStorage.getItem('username');
+
+const cart = [];
 
 const getData = async function(url){
   const response = await fetch(url);
@@ -37,6 +42,63 @@ function toggleModalAuth() {
   modalAuth.classList.toggle("is-open");
 };
 
+function renderCart() {
+  modalBody.textContent = '';
+
+  cart.forEach(function({id, title, price, quantity}){
+    const itemCart = `
+      <div class="food-row">
+        <span class="food-name">${title}</span>
+        <strong class="food-price">${price}</strong>
+        <div class="food-counter">
+          <button class="counter-button counter-minus" data-id=${id}>-</button>
+          <span class="counter">${quantity}</span>
+          <button class="counter-button counter-plus" data-id=${id}>+</button>
+        </div>
+      </div>
+    `;
+
+    modalBody.insertAdjacentHTML('afterbegin', itemCart)
+  });
+
+  const totalPrice = cart.reduce(function(result, item) { 
+    return result + (parseFloat(item.price)) * item.quantity;
+   }, 0);
+
+   modalPricetag.textContent = totalPrice + ' ₽';
+};
+
+function changeQuantity(event){
+  const target = event.target;
+
+  if (target.classList.contains('counter-button')){
+
+    const food = cart.find(function(item){
+      return item.id === target.dataset.id; 
+    });
+    
+
+    if (target.classList.contains('counter-minus')){
+      food.quantity --;
+
+      if (food.quantity === 0){
+        cart.splice(cart.indexOf(food), 1);
+      };
+    };
+  
+    if (target.classList.contains('counter-plus')){
+      food.quantity ++;
+    }
+
+    renderCart();
+
+  }
+
+  
+
+
+}
+
 function toggleModal() {
   modal.classList.toggle("is-open");
 };
@@ -49,15 +111,17 @@ function authorized(){
     buttonAuth.style.display = '';
     userName.style.display = '';
     buttonOut.style.display = '';
+    cartButton.style.display = '';
     buttonOut.removeEventListener('click', logOut);
     checkAuth();
   }
 
   console.log('authorized');
   userName.textContent = login;
+  cartButton.style.display = 'flex';
   buttonAuth.style.display = 'none';
   userName.style.display = 'inline';
-  buttonOut.style.display = 'block';
+  buttonOut.style.display = 'flex';
   buttonOut.addEventListener('click', logOut);
 };
 
@@ -137,11 +201,11 @@ function createCardGood({ description, id, image, name, price }){
         </div>
       </div>
       <div class="card-buttons">
-        <button class="button button-primary button-add-cart">
+        <button class="button button-primary button-add-cart" id=${id}>
           <span class="button-card-text">В корзину</span>
           <span class="button-cart-svg"></span>
         </button>
-        <strong class="card-price-bold">${price} ₽</strong>
+        <strong class="card-price card-price-bold">${price} ₽</strong>
       </div>
     </div>
   `);
@@ -192,6 +256,34 @@ function openGoods(event){
   }
 };
 
+function addToCart(event){
+
+  const target = event.target;
+
+  const buttonAddToCart = target.closest('.button-add-cart');
+
+  if (buttonAddToCart){
+    const card = target.closest('.card');
+    const title = card.querySelector('.card-title').textContent;
+    const price = card.querySelector('.card-price').textContent;
+    const id = buttonAddToCart.id;
+
+    const food = cart.find(function(item){
+      return item.id === id;
+    })
+
+    if (food){
+      food.quantity += 1;
+    } else {
+      cart.push({id, title, price, quantity : 1})
+    }
+
+
+    console.log(cart);
+  }
+  
+}
+
 function init(){
 
   getData('db/partners.json').then(function(data){
@@ -200,7 +292,20 @@ function init(){
 
   cardsRestaurants.addEventListener('click', openGoods);
 
-  cartButton.addEventListener("click", toggleModal);
+  cartButton.addEventListener("click", function(){
+    renderCart();
+    toggleModal();
+  });
+
+  clearCart.addEventListener('click', function(){
+    console.log(11);
+    cart.length = 0;
+    renderCart();
+  });
+
+  modalBody.addEventListener('click', changeQuantity);
+
+  cardsMenu.addEventListener('click', addToCart);
 
   close.addEventListener("click", toggleModal);
 
